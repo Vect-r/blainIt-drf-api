@@ -1,23 +1,34 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django import forms  # <-- 1. Import forms
 from .models import User
+
+# 2. Create a custom form for adding users in the admin panel
+class CustomUserCreationForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ('phone', 'is_active', 'is_staff')
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        # Give them an unusable password since they will use OTP
+        user.set_unusable_password() 
+        if commit:
+            user.save()
+        return user
 
 class CustomUserAdmin(UserAdmin):
     model = User
     
-    # What columns are shown on the main user list page
+    # 3. Tell the admin to use your new custom form for the "Add user" page
+    add_form = CustomUserCreationForm 
+    
+    # ... Keep all your existing settings below this point ...
     list_display = ('phone', 'username', 'email', 'is_active', 'is_staff', 'created_at')
-    
-    # What fields you can filter the list by (right sidebar)
     list_filter = ('is_active', 'is_staff', 'created_at')
-    
-    # What fields the search bar will look through
     search_fields = ('phone', 'username', 'email')
-    
-    # Default sorting (newest users first)
     ordering = ('-created_at',)
 
-    # How fields are grouped when you click on a specific user to edit them
     fieldsets = (
         ('Login Credentials', {'fields': ('phone',)}),
         ('Personal Info', {'fields': ('username', 'email', 'bio')}),
@@ -25,7 +36,6 @@ class CustomUserAdmin(UserAdmin):
         ('Important Dates', {'fields': ('id', 'created_at', 'updated_at')}),
     )
 
-    # How fields are grouped when you click "Add User" in the admin dashboard
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
@@ -33,8 +43,6 @@ class CustomUserAdmin(UserAdmin):
         ),
     )
 
-    # Make the UUID and timestamps read-only so they can't be accidentally edited
     readonly_fields = ('id', 'created_at', 'updated_at')
 
-# Register the model and the custom admin class
 admin.site.register(User, CustomUserAdmin)
