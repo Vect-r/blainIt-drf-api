@@ -12,20 +12,30 @@ class BaseClass(models.Model):
         abstract = True
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, phone, **extra_fields):
+    def create_user(self, phone, password=None, **extra_fields):
         if not phone:
             raise ValueError('The Phone Number must be set')
         user = self.model(phone=phone, **extra_fields)
-        # We use set_unusable_password() because authentication is OTP-based
-        user.set_unusable_password() 
+        
+        # If a password is provided (like for a superuser), set it. 
+        # Otherwise, make it unusable for OTP customers.
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password() 
+            
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, phone, **extra_fields):
+    def create_superuser(self, phone, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
-        return self.create_user(phone, **extra_fields)
+        
+        if not password:
+            raise ValueError('Superusers must have a password to log into the admin panel.')
+
+        return self.create_user(phone, password, **extra_fields)
 
 class User(BaseClass, AbstractBaseUser, PermissionsMixin):
     # Added max_length and unique=True (crucial for login)
